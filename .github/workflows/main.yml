@@ -1,44 +1,35 @@
-name: WhatsApp Bot - Safe 6h Cycle
+name: Auto-Deploy WhatsApp Bot
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'       # 00:00, 07:00, 14:00, 21:00 UTC
+  push:
+    branches:
+      - main
   workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
 
 concurrency:
-  group: whatsapp-bot-6h
+  group: whatsapp-bot
   cancel-in-progress: true
 
 jobs:
-  run-bot:
+  deploy-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 345   # 5h 45min – safely under 6h limit
+    strategy:
+      matrix:
+        node-version: [20.x]
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        run: npm ci || npm install --legacy-peer-deps
+        run: npm install
 
-      - name: Start WhatsApp Bot
-        run: |
-          echo "Bot periodic run - $(date '+%Y-%m-%d %H:%M:%S')"
-          echo "Max expected runtime: ~5.5 hours"
-          echo "Next automatic run in ~6 hours"
-          echo ""
-
-          npm start || echo "Bot ended/crashed"
-
-          # B) Auto-restart loop (uncomment if you want it instead)
-          # while true; do
-          #   echo "[$(date '+%H:%M:%S')] Starting bot..."
-          #   npm start || echo "Bot stopped → restarting in 10s"
-          #   sleep 10
-          # done
+      - name: Start bot
+        run: npm start
