@@ -1,36 +1,44 @@
-name: WhatsApp Bot Runner
+name: WhatsApp Bot - Safe 6h Cycle
 
-# Schedule the workflow to restart the bot every 5 hours
-# and allow manual trigger
 on:
   schedule:
-    - cron: "0 */5 * * *"  # every 5 hours
+    - cron: '0 */6 * * *'       # 00:00, 07:00, 14:00, 21:00 UTC
   workflow_dispatch:
 
 concurrency:
-  group: whatsapp-bot
+  group: whatsapp-bot-6h
   cancel-in-progress: true
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 345   # 5h 45min – safely under 6h limit
 
     steps:
-      # Step 1: Checkout your repo
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'   # Use your Node version
+          node-version: '20'
+          cache: 'npm'
 
-      # Step 3: Install dependencies
-      - name: Install Dependencies
-        run: npm install
+      - name: Install dependencies
+        run: npm ci || npm install --legacy-peer-deps
 
-      # Step 4: Run the bot
-      - name: Start Bot
+      - name: Start WhatsApp Bot
         run: |
-          node start.js
+          echo "Bot periodic run - $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Max expected runtime: ~5.5 hours"
+          echo "Next automatic run in ~6 hours"
+          echo ""
+
+          npm start || echo "Bot ended/crashed"
+
+          # B) Auto-restart loop (uncomment if you want it instead)
+          # while true; do
+          #   echo "[$(date '+%H:%M:%S')] Starting bot..."
+          #   npm start || echo "Bot stopped → restarting in 10s"
+          #   sleep 10
+          # done
